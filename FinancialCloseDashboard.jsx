@@ -1,110 +1,141 @@
 import React, { useState, useMemo } from 'react';
-import { X, Calendar, User, Building2, Clock, AlertCircle } from 'lucide-react';
+import { X, Calendar, User, Building2, Clock, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 
-// Mock data for financial close tasks in January 2026
-const mockTasks = [
+const taskTemplates = [
   {
-    id: 1,
     taskName: 'Bank Reconciliation',
     assignedTo: 'Sarah Johnson',
-    dueDate: '2026-01-05T17:00:00',
     company: 'USMF',
-    status: 'Completed'
+    day: 5,
+    hour: 17,
+    minute: 0
   },
   {
-    id: 2,
     taskName: 'AP Aging Review',
     assignedTo: 'Michael Chen',
-    dueDate: '2026-01-08T15:00:00',
     company: 'DEMO',
-    status: 'Completed'
+    day: 8,
+    hour: 15,
+    minute: 0
   },
   {
-    id: 3,
     taskName: 'Revenue Recognition',
     assignedTo: 'Sarah Johnson',
-    dueDate: '2026-01-10T18:00:00',
     company: 'USMF',
-    status: 'In Progress'
+    day: 10,
+    hour: 18,
+    minute: 0
   },
   {
-    id: 4,
     taskName: 'Fixed Assets Depreciation',
     assignedTo: 'David Martinez',
-    dueDate: '2026-01-12T16:00:00',
     company: 'USMF',
-    status: 'Pending'
+    day: 12,
+    hour: 16,
+    minute: 0
   },
   {
-    id: 5,
     taskName: 'Inventory Count Verification',
     assignedTo: 'Emily Roberts',
-    dueDate: '2026-01-15T17:00:00',
     company: 'DEMO',
-    status: 'In Progress'
+    day: 15,
+    hour: 17,
+    minute: 0
   },
   {
-    id: 6,
     taskName: 'Payroll Accruals',
     assignedTo: 'Michael Chen',
-    dueDate: '2026-01-18T14:00:00',
     company: 'USMF',
-    status: 'Completed'
+    day: 18,
+    hour: 14,
+    minute: 0
   },
   {
-    id: 7,
     taskName: 'Intercompany Reconciliation',
     assignedTo: 'Sarah Johnson',
-    dueDate: '2026-01-20T16:00:00',
     company: 'DEMO',
-    status: 'In Progress'
+    day: 20,
+    hour: 16,
+    minute: 0
   },
   {
-    id: 8,
     taskName: 'Tax Provisions',
     assignedTo: 'David Martinez',
-    dueDate: '2026-01-22T17:00:00',
     company: 'USMF',
-    status: 'Pending'
+    day: 22,
+    hour: 17,
+    minute: 0
   },
   {
-    id: 9,
     taskName: 'Financial Statement Review',
     assignedTo: 'Emily Roberts',
-    dueDate: '2026-01-25T18:00:00',
     company: 'DEMO',
-    status: 'Pending'
+    day: 25,
+    hour: 18,
+    minute: 0
   },
   {
-    id: 10,
     taskName: 'Month-End Journal Entries',
     assignedTo: 'Michael Chen',
-    dueDate: '2026-01-28T16:00:00',
     company: 'USMF',
-    status: 'In Progress'
+    day: 28,
+    hour: 16,
+    minute: 0
   },
   {
-    id: 11,
     taskName: 'Expense Report Processing',
     assignedTo: 'Sarah Johnson',
-    dueDate: '2026-01-14T15:00:00',
     company: 'DEMO',
-    status: 'Completed'
+    day: 14,
+    hour: 15,
+    minute: 0
   },
   {
-    id: 12,
     taskName: 'Cash Flow Analysis',
     assignedTo: 'David Martinez',
-    dueDate: '2026-01-30T17:00:00',
     company: 'USMF',
-    status: 'Pending'
+    day: 30,
+    hour: 17,
+    minute: 0
   }
 ];
 
+const statusCycle = ['Completed', 'In Progress', 'Pending'];
+
+const buildYearlyTasks = (year) => {
+  let taskId = 1;
+
+  return Array.from({ length: 12 }, (_, month) => (
+    taskTemplates.map((template, index) => {
+      const daysInMonth = new Date(year, month + 1, 0).getDate();
+      const day = Math.min(template.day, daysInMonth);
+      const dueDate = new Date(year, month, day, template.hour, template.minute, 0);
+
+      return {
+        id: taskId++,
+        taskName: template.taskName,
+        assignedTo: template.assignedTo,
+        dueDate: dueDate.toISOString(),
+        company: template.company,
+        status: statusCycle[(month + index) % statusCycle.length]
+      };
+    })
+  )).flat();
+};
+
 const FinancialCloseDashboard = () => {
+  const today = useMemo(() => new Date(), []);
   const [selectedTask, setSelectedTask] = useState(null);
   const [filter, setFilter] = useState('all'); // 'all' or 'me'
   const [currentUser] = useState('Sarah Johnson'); // Simulated current user
+  const [displayDate, setDisplayDate] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+
+  const currentYearTasks = useMemo(() => {
+    return buildYearlyTasks(displayDate.getFullYear());
+  }, [displayDate]);
+
+  const displayedMonth = displayDate.getMonth();
+  const displayedYear = displayDate.getFullYear();
 
   // Company color mapping
   const companyColors = {
@@ -122,15 +153,31 @@ const FinancialCloseDashboard = () => {
   // Filter tasks based on selection
   const filteredTasks = useMemo(() => {
     if (filter === 'me') {
-      return mockTasks.filter(task => task.assignedTo === currentUser);
+      return currentYearTasks.filter(task => task.assignedTo === currentUser);
     }
-    return mockTasks;
-  }, [filter, currentUser]);
+    return currentYearTasks;
+  }, [filter, currentUser, currentYearTasks]);
 
-  // Generate calendar days for January 2026
+  const monthLabel = useMemo(() => {
+    return displayDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }, [displayDate]);
+
+  const showCurrentMonth = () => {
+    setDisplayDate(new Date(today.getFullYear(), today.getMonth(), 1));
+  };
+
+  const showPreviousMonth = () => {
+    setDisplayDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const showNextMonth = () => {
+    setDisplayDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  // Generate calendar day cells for the selected month.
   const generateCalendarDays = () => {
-    const year = 2026;
-    const month = 0; // January (0-indexed)
+    const year = displayedYear;
+    const month = displayedMonth;
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const daysInMonth = lastDay.getDate();
@@ -194,10 +241,32 @@ const FinancialCloseDashboard = () => {
           </div>
 
           {/* Filter Bar */}
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-700">
-              January 2026
-            </h2>
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={showPreviousMonth}
+                className="p-2 rounded-md bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+                aria-label="Previous month"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <h2 className="text-xl font-semibold text-gray-700 min-w-44 text-center">
+                {monthLabel}
+              </h2>
+              <button
+                onClick={showNextMonth}
+                className="p-2 rounded-md bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 transition-colors"
+                aria-label="Next month"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={showCurrentMonth}
+                className="px-3 py-2 rounded-md text-sm font-medium text-blue-700 border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
+              >
+                Today
+              </button>
+            </div>
             <div className="flex gap-2">
               <button
                 onClick={() => setFilter('all')}
@@ -253,9 +322,9 @@ const FinancialCloseDashboard = () => {
                   <>
                     <div className="text-right mb-2">
                       <span className={`inline-flex items-center justify-center w-7 h-7 text-sm font-medium rounded-full ${
-                        day.date === new Date().getDate() && 
-                        new Date().getMonth() === 0 && 
-                        new Date().getFullYear() === 2026
+                        day.date === today.getDate() && 
+                        displayedMonth === today.getMonth() && 
+                        displayedYear === today.getFullYear()
                           ? 'bg-blue-600 text-white'
                           : 'text-gray-700'
                       }`}>
